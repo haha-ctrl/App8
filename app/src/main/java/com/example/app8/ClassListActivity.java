@@ -60,19 +60,17 @@
             context = ClassListActivity.this;
 
 
-
             drawer = findViewById(R.id.drawer_layout);
-
             listView = findViewById(R.id.listView);
             expandable_navigation = findViewById(R.id.expandable_navigation);
+            NavigationView navigationView = findViewById(R.id.nav_view);
+            navigationView.setNavigationItemSelectedListener(this);
 
-            drawer = findViewById(R.id.drawer_layout);
             toggle = new ActionBarDrawerToggle(
                     this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
             drawer.addDrawerListener(toggle);
             toggle.syncState();
-            NavigationView navigationView = findViewById(R.id.nav_view);
-            navigationView.setNavigationItemSelectedListener(this);
+
 
             listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
@@ -87,17 +85,8 @@
 
             expandable_navigation.init(this)
                     .addHeaderModel(new HeaderModel("Home"))
-                    .addHeaderModel(new HeaderModel("Cart",  R.drawable.ic_cardbackgroud, true,true, false, Color.WHITE))
-                    .addHeaderModel(
-                            new HeaderModel("Categories", -1,true)
-                                    .addChildModel(new ChildModel("Men's Fashion"))
-                                    .addChildModel(new ChildModel("Woman's Fashion"))
-                                    .addChildModel(new ChildModel("Babies and Family"))
-                                    .addChildModel(new ChildModel("Health"))
-                    )
-                    .addHeaderModel(new HeaderModel("Orders"))
-                    .addHeaderModel(new HeaderModel("Wishlist"))
-                    .addHeaderModel(new HeaderModel("Notifications"))
+                    .addHeaderModel(new HeaderModel("Recognize"))
+                    .addHeaderModel(new HeaderModel("Log out"))
                     .build()
                     .addOnGroupClickListener(new ExpandableListView.OnGroupClickListener() {
                         @Override
@@ -108,46 +97,23 @@
                             if (id == 0) {
                                 //Home Menu
                                 Common.showToast(context, "Home Select");
-
-                                drawer.closeDrawer(GravityCompat.START);
-                            } else if (id == 1) {
-                                //Cart Menu
-                                Common.showToast(context, "Cart Select");
-                                drawer.closeDrawer(GravityCompat.START);
-                            } /*else if (id == 2) {
-                            //Categories Menu
-                            Common.showToast(context, "Categories  Select");
-                        }*/ else if (id == 3) {
-                                //Orders Menu
-                                Common.showToast(context, "Orders");
-                                drawer.closeDrawer(GravityCompat.START);
-                            } else if (id == 4) {
-                                //Wishlist Menu
-                                Common.showToast(context, "Wishlist Selected");
-                                drawer.closeDrawer(GravityCompat.START);
-                            } else if (id == 5) {
-                                //Notifications Menu
-                                Common.showToast(context, "Notifications");
+                                Intent intent = new Intent(v.getContext(), ClassListActivity.class);
+                                startActivity(intent);
                                 drawer.closeDrawer(GravityCompat.START);
                             }
-                            return false;
-                        }
-                    })
-                    .addOnChildClickListener(new ExpandableListView.OnChildClickListener() {
-                        @Override
-                        public boolean onChildClick(ExpandableListView parent, View v, int groupPosition, int childPosition, long id) {
-                            expandable_navigation.setSelected(groupPosition, childPosition);
-                            if (id == 0) {
-                                Common.showToast(context, "Man's Fashion");
-                            } else if (id == 1) {
-                                Common.showToast(context, "Woman's Fashion");
+                            else if (id == 1) {
+                                //Recognize Menu
+                                Common.showToast(context, "Recognize");
+                                Intent intent = new Intent(v.getContext(), RecognizeActivity.class);
+                                startActivity(intent);
+                                drawer.closeDrawer(GravityCompat.START);
                             } else if (id == 2) {
-                                Common.showToast(context, "Babies and Family");
-                            } else if (id == 3) {
-                                Common.showToast(context, "Health");
+                                //Wishlist Menu
+                                Common.showToast(context, "Log out Selected");
+                                Intent intent = new Intent(v.getContext(), LoginActivity.class);
+                                startActivity(intent);
+                                drawer.closeDrawer(GravityCompat.START);
                             }
-
-                            drawer.closeDrawer(GravityCompat.START);
                             return false;
                         }
                     });
@@ -209,6 +175,8 @@
 
             //noinspection SimplifiableIfStatement
             if (id == R.id.action_settings) {
+                Intent intent = new Intent(ClassListActivity.this,SettingsActivity.class);
+                startActivity(intent);
                 return true;
             }
 
@@ -221,6 +189,16 @@
             // Handle navigation view item clicks here.
             int id = item.getItemId();
 
+//            if(id == R.id.Home) {
+//                Intent intent = new Intent(this, ClassListActivity.class);
+//                startActivity(intent);
+//            } else if (id == R.id.Recognize) {
+//                Intent intent = new Intent(this, RecognizeActivity.class);
+//                startActivity(intent);
+//            } else if (id == R.id.Logout) {
+//                Intent intent = new Intent(this, LoginActivity.class);
+//                startActivity(intent);
+//            }
        /* if (id == R.id.nav_camera) {
             // Handle the camera action
         } else if (id == R.id.nav_gallery) {
