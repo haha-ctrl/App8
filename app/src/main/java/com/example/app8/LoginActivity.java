@@ -2,6 +2,7 @@ package com.example.app8;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.util.Pair;
 
 import android.Manifest;
 import android.content.Intent;
@@ -78,24 +79,47 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        boolean authenticated = authenticateUser(username, password);
+        Pair<Boolean, String> authenticationResult = authenticateUser(username, password);
+        boolean authenticated = authenticationResult.first;
+        String kind = authenticationResult.second;
 
         if (authenticated) {
             // Nếu đăng nhập thành công, chuyển sang Activity tiếp theo
-            Intent intent = new Intent(LoginActivity.this, ClassListActivity.class);
-            startActivity(intent);
+            Intent intent = new Intent();
+            if ("admin".equals(kind)) {
+                // User is an admin, go to ClassListActivity
+                intent = new Intent(LoginActivity.this, ClassListActivity.class);
+                intent.putExtra("username", username);
+                startActivity(intent);
+                finish();
+            } else if ("teacher".equals(kind)) {
+                // User is a teacher, go to TeacherActivity
+                intent = new Intent(LoginActivity.this, TeacherActivity.class);
+                intent.putExtra("username", username);
+                startActivity(intent);
+                finish();
+            } else {
+                // Handle other roles or scenarios as needed
+                // You can display an error message or navigate to a default activity.
+                Toast.makeText(LoginActivity.this, "Error: No 'KIND' detected", Toast.LENGTH_SHORT).show();
+            }
+
         } else {
             // Hiển thị thông báo lỗi nếu đăng nhập không thành công
             Toast.makeText(LoginActivity.this, "Đăng nhập không thành công. Vui lòng thử lại.", Toast.LENGTH_SHORT).show();
         }
     }
 
-    public boolean authenticateUser(String username, String password) {
+    public Pair<Boolean, String> authenticateUser(String username, String password) {
         boolean authenticated = false;
 
         // Thực hiện truy vấn kiểm tra tài khoản trong cơ sở dữ liệu
         // Thay thế dòng sau bằng cách sử dụng PreparedStatement để tránh lỗi SQL Injection
         String query = "SELECT COUNT(*) FROM ACCOUNT WHERE USERNAME = ? AND PASSWORD = ?";
+        String queryKind = "SELECT KIND\n" +
+                "FROM dbo.ACCOUNT\n" +
+                "WHERE USERNAME = ? AND PASSWORD = ?";
+        String KIND = "";
 
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
@@ -111,6 +135,20 @@ public class LoginActivity extends AppCompatActivity {
                 authenticated = true;
             }
 
+            preparedStatement = connection.prepareStatement(queryKind);
+            preparedStatement.setString(1, username);
+            preparedStatement.setString(2, password);
+            ResultSet resultSetKind = preparedStatement.executeQuery();
+            if (resultSetKind.next()) {
+                String kind = resultSetKind.getString("KIND"); // Use the column name
+                KIND = kind;
+                // Now, 'kind' contains the value from the 'KIND' column in the result
+                // Use 'kind' as needed in your code
+            } else {
+                // Handle the case where no matching user is found
+                // You may want to display an error message or take appropriate action
+            }
+
             resultSet.close();
             preparedStatement.close();
         } catch (SQLException e) {
@@ -118,7 +156,7 @@ public class LoginActivity extends AppCompatActivity {
             Log.e("MyApp", "Lỗi xảy ra: " + e.getMessage());
         }
 
-        return authenticated;
+        return new Pair<>(authenticated, KIND);
     }
 
 }

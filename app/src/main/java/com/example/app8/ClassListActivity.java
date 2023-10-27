@@ -20,6 +20,7 @@
     import android.widget.Button;
     import android.widget.ListView;
     import android.widget.RelativeLayout;
+    import android.widget.TextView;
     import android.widget.Toast;
 
     import com.dvinfosys.model.ChildModel;
@@ -46,7 +47,8 @@
         private CustomClassListAdapter adapter;
         private Connection connection;
         private static final int ADD_ACCOUNT_REQUEST = 1;
-
+        private TextView role;
+        private TextView adminName;
 
 
         @Override
@@ -64,6 +66,19 @@
             listView = findViewById(R.id.listView);
             expandable_navigation = findViewById(R.id.expandable_navigation);
             NavigationView navigationView = findViewById(R.id.nav_view);
+            View header= navigationView.getHeaderView(0);
+            role= header.findViewById(R.id.role);
+            role.setText(R.string.role_admin);
+            Intent intent = getIntent();
+            if (intent.hasExtra("username")) {
+                String username = intent.getStringExtra("username");
+
+                // Now, you can use 'username' to display it in your UI elements
+                // For example, if you have a TextView with ID 'textViewUsername':
+                adminName = header.findViewById(R.id.adminName);;
+                adminName.setText(username.toUpperCase());
+            }
+
             navigationView.setNavigationItemSelectedListener(this);
 
             toggle = new ActionBarDrawerToggle(
@@ -85,7 +100,6 @@
 
             expandable_navigation.init(this)
                     .addHeaderModel(new HeaderModel("Home"))
-                    .addHeaderModel(new HeaderModel("Recognize"))
                     .addHeaderModel(new HeaderModel("Log out"))
                     .build()
                     .addOnGroupClickListener(new ExpandableListView.OnGroupClickListener() {
@@ -101,18 +115,12 @@
                                 startActivity(intent);
                                 drawer.closeDrawer(GravityCompat.START);
                             }
-                            else if (id == 1) {
-                                //Recognize Menu
-                                Common.showToast(context, "Recognize");
-                                Intent intent = new Intent(v.getContext(), RecognizeActivity.class);
-                                startActivity(intent);
-                                drawer.closeDrawer(GravityCompat.START);
-                            } else if (id == 2) {
+                             else if (id == 1) {
                                 //Wishlist Menu
                                 Common.showToast(context, "Log out Selected");
                                 Intent intent = new Intent(v.getContext(), LoginActivity.class);
                                 startActivity(intent);
-                                drawer.closeDrawer(GravityCompat.START);
+                                finish();
                             }
                             return false;
                         }

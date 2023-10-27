@@ -42,4 +42,9 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment:2.3.5"
     implementation "androidx.navigation:navigation-ui:2.3.5"
     implementation project(path: ':navigationlistview')
+
+    implementation 'com.google.mlkit:face-detection:16.1.5'
+    implementation 'org.tensorflow:tensorflow-lite:+'
+    implementation 'com.google.code.gson:gson:2.8.2'
+
 }
