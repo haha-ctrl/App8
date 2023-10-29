@@ -11,6 +11,10 @@ import android.util.Pair;
 import com.google.gson.Gson;
 
 import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.support.common.ops.NormalizeOp;
+import org.tensorflow.lite.support.image.ImageProcessor;
+import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.image.ops.ResizeOp;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -26,11 +30,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TFLiteFaceRecognition
-        implements FaceClassifier {
+public class TFLiteFaceRecognition implements FaceClassifier {
 
-    private static final int OUTPUT_SIZE = 512;
-    //private static final int OUTPUT_SIZE = 192;
+    //private static final int OUTPUT_SIZE = 512;
+    private static final int OUTPUT_SIZE = 192;
 
     // Only return this many results.
     private static final int NUM_DETECTIONS = 1;
@@ -45,25 +48,24 @@ public class TFLiteFaceRecognition
 
     private int[] intValues;
 
-    private float[][] embeedings;
+    private float[] faceEmbedding;
 
     private ByteBuffer imgData;
 
-    private Interpreter tfLite;
+    private Interpreter faceNetModelInterpreter;
+    private static final int FACENET_INPUT_IMAGE_SIZE = 112;
     private Connection connection = SQLConnection.getConnection();
 
-
+    private byte[] convertFloatArrayToBytes(float[] floatArray) {
+        ByteBuffer buffer = ByteBuffer.allocate(floatArray.length * 4);
+        for (float value : floatArray) {
+            buffer.putFloat(value);
+        }
+        return buffer.array();
+    }
     public void register(String name, Recognition rec) {
         //MainActivity.registered.put(name, rec);
-        //store this recognition in database if possible
-        Gson gson = new Gson();
 
-        String embeedingJson = gson.toJson(rec.getEmbeeding());
-        Log.d("name", name);
-        Log.d("id", rec.getId());
-        Log.d("title", rec.getTitle());
-        Log.d("distance", String.valueOf(rec.getDistance()));
-        Log.d("embeeding", embeedingJson);
         if (connection != null) {
             String insertSQL = "INSERT INTO registered (sdName, Id, Title, Distance, Embeeding) VALUES (?, ?, ?, ?, ?)";
             try (PreparedStatement preparedStatement = connection.prepareStatement(insertSQL)) {
@@ -71,7 +73,8 @@ public class TFLiteFaceRecognition
                 preparedStatement.setString(2, rec.getId());
                 preparedStatement.setString(3, rec.getTitle());
                 preparedStatement.setFloat(4, rec.getDistance());
-                preparedStatement.setObject(5, embeedingJson);
+                byte[] faceVectorBytes = convertFloatArrayToBytes(rec.getEmbeeding());
+                preparedStatement.setBytes(5, faceVectorBytes);
                 preparedStatement.executeUpdate();
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -106,7 +109,7 @@ public class TFLiteFaceRecognition
         d.inputSize = inputSize;
 
         try {
-            d.tfLite = new Interpreter(loadModelFile(assetManager, modelFilename));
+            d.faceNetModelInterpreter = new Interpreter(loadModelFile(assetManager, modelFilename));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -131,7 +134,7 @@ public class TFLiteFaceRecognition
         Pair<String, Float> ret = null;
         for (Map.Entry<String, Recognition> entry : MainActivity.registered.entrySet()) {
             final String name = entry.getKey();
-            final float[] knownEmb = ((float[][]) entry.getValue().getEmbeeding())[0];
+            final float[] knownEmb = ((float[]) entry.getValue().getEmbeeding());
 
             float distance = 0;
             for (int i = 0; i < emb.length; i++) {
@@ -147,38 +150,28 @@ public class TFLiteFaceRecognition
     }
 
 
-
+    private float[] getFaceEmbeddings(Bitmap faceBitmap) {
+            // Tạo TensorImage từ Bitmap
+            TensorImage tensorImage = TensorImage.fromBitmap(faceBitmap);
+            // Xử lý ảnh để chuẩn bị cho FaceNet
+            ImageProcessor faceNetImageProcessor = new ImageProcessor.Builder()
+                    .add(new ResizeOp(FACENET_INPUT_IMAGE_SIZE, FACENET_INPUT_IMAGE_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(new NormalizeOp(0f, 255f))
+                    .build();
+            tensorImage = faceNetImageProcessor.process(tensorImage);
+            // Chuyển đổi TensorImage thành ByteBuffer
+            ByteBuffer faceNetByteBuffer = tensorImage.getBuffer();
+            // Tạo mảng để lưu trữ kết quả embeddings
+            float[][] faceOutputArray = new float[1][192];
+            // Sử dụng faceNetModelInterpreter để trích xuất embeddings
+            faceNetModelInterpreter.run(faceNetByteBuffer, faceOutputArray);
+            return faceOutputArray[0];
+    }
 
     //TODO TAKE INPUT IMAGE AND RETURN RECOGNITIONS
     @Override
     public Recognition recognizeImage(final Bitmap bitmap, boolean storeExtra) {
-        bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
-        imgData.rewind();
-        for (int i = 0; i < inputSize; ++i) {
-            for (int j = 0; j < inputSize; ++j) {
-                int pixelValue = intValues[i * inputSize + j];
-                if (isModelQuantized) {
-                    // Quantized model
-                    imgData.put((byte) ((pixelValue >> 16) & 0xFF));
-                    imgData.put((byte) ((pixelValue >> 8) & 0xFF));
-                    imgData.put((byte) (pixelValue & 0xFF));
-                } else { // Float model
-                    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-                    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-                    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-                }
-            }
-        }
-        Object[] inputArray = {imgData};
-        // Here outputMap is changed to fit the Face Mask detector
-        Map<Integer, Object> outputMap = new HashMap<>();
-
-        embeedings = new float[1][OUTPUT_SIZE];
-        outputMap.put(0, embeedings);
-
-        // Run the inference call.
-        tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
-
+        float[] embeedings = getFaceEmbeddings(bitmap);
 
         float distance = Float.MAX_VALUE;
         String id = "0";
@@ -187,7 +180,7 @@ public class TFLiteFaceRecognition
 
         Log.d("registeredSize", String.valueOf(MainActivity.registered.size()));
         if (MainActivity.registered.size() > 0) {
-            final Pair<String, Float> nearest = findNearest(embeedings[0]);
+            final Pair<String, Float> nearest = findNearest(embeedings);
             if (nearest != null) {
                 final String name = nearest.first;
                 label = name;

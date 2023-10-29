@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.gson.Gson;
 
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -51,7 +52,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
+    private float[] convertBytesToFloatArray(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        float[] floatArray = new float[bytes.length / 4];
+        for (int i = 0; i < floatArray.length; i++) {
+            floatArray[i] = buffer.getFloat();
+        }
+        return floatArray;
+    }
     public HashMap<String, FaceClassifier.Recognition> getRegisteredFacesFromDatabase() {
         // Create an AsyncTask to perform the database query asynchronously
         new AsyncTask<Void, Void, HashMap<String, FaceClassifier.Recognition>>() {
@@ -68,12 +76,10 @@ public class MainActivity extends AppCompatActivity {
                                 String id = resultSet.getString("Id");
                                 String title = resultSet.getString("Title");
                                 float distance = resultSet.getFloat("Distance");
-                                String embeedingJson = resultSet.getString("Embeeding");
+                                byte[] faceVectorBytes = resultSet.getBytes("Embeeding");
+                                float[] faceEmbeddings = convertBytesToFloatArray(faceVectorBytes);
 
-                                // Deserialize the embeeding JSON into the appropriate object.
-                                // You may need to use Gson or another library to do this.
-                                float[][] embeeding = new Gson().fromJson(embeedingJson, float[][].class);
-                                FaceClassifier.Recognition rec = new FaceClassifier.Recognition(id, title, distance, new RectF(), embeeding);
+                                FaceClassifier.Recognition rec = new FaceClassifier.Recognition(id, title, distance, new RectF(), faceEmbeddings);
 
                                 registeredFaces.put(sdName, rec);
                             }

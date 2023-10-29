@@ -5,11 +5,11 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class SQLConnection {
-    private static String ip = "192.168.1.2";
+    private static String ip = "192.168.1.6";
     private static String port = "1433";
     private static String Classes = "net.sourceforge.jtds.jdbc.Driver";
     private static String database = "PROJECT";
-    private static String username = "Khanh";
+    private static String username = "phuc";
     private static String password = "123";
     private static String url = "jdbc:jtds:sqlserver://" + ip + ":" + port + "/" + database;
     private static Connection connection = null;
